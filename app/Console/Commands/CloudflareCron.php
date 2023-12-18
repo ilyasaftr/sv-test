@@ -29,14 +29,14 @@ class CloudflareCron extends Command
     public function handle()
     {
         $this->info('Cloudflare IP Dynamic Cron | '. date('Y-m-d H:i:s'));
-        $cloudflareDomain = Env('CLOUDFLARE_DOMAIN');
+        $cloudflareDomain = Env::get('CLOUDFLARE_DOMAIN');
         $this->runningCheck($cloudflareDomain);
     }
 
     private function runningCheck($name) {
-        $cloudflareZoneId = Env('CLOUDFLARE_ZONE_ID');
-        $cloudflareEmail = Env('CLOUDFLARE_EMAIL');
-        $cloudflareKey = Env('CLOUDFLARE_KEY');
+        $cloudflareZoneId = Env::get('CLOUDFLARE_ZONE_ID');
+        $cloudflareEmail = Env::get('CLOUDFLARE_EMAIL');
+        $cloudflareKey = Env::get('CLOUDFLARE_KEY');
         $fullUrl = "https://api.cloudflare.com/client/v4/zones/$cloudflareZoneId/dns_records";
 
         $response = Http::withHeaders([
@@ -48,7 +48,6 @@ class CloudflareCron extends Command
         if ($response->successful()) {
             $data = $response->json();
             $result = collect($data['result'])->where('name', $name)->first();
-
             // if not exist create new
             if (!$result) {
                 $result = $this->createDNSRecord($name, $this->getPublicIP());
@@ -58,16 +57,16 @@ class CloudflareCron extends Command
 
             return $result['id'];
         } else {
-            $this->error('DNS Update Failed');
+            $this->error('DNS Update Failed 2');
             Log::error($response->body());
         }
     }
 
     private function createDNSRecord($name, $content)
     {
-        $cloudflareZoneId = Env('CLOUDFLARE_ZONE_ID');
-        $cloudflareEmail = Env('CLOUDFLARE_EMAIL');
-        $cloudflareKey = Env('CLOUDFLARE_KEY');
+        $cloudflareZoneId = Env::get('CLOUDFLARE_ZONE_ID');
+        $cloudflareEmail = Env::get('CLOUDFLARE_EMAIL');
+        $cloudflareKey = Env::get('CLOUDFLARE_KEY');
         $fullUrl = "https://api.cloudflare.com/client/v4/zones/$cloudflareZoneId/dns_records";
 
         $body = [
@@ -88,16 +87,16 @@ class CloudflareCron extends Command
             $this->info('DNS Created');
             return $response->json()['result'];
         } else {
-            $this->error('DNS Create Failed');
+            $this->info('DNS Create Failed');
             Log::error($response->body());
         }
     }
 
     private function updateDNSRecord($id, $name, $content)
     {
-        $cloudflareZoneId = Env('CLOUDFLARE_ZONE_ID');
-        $cloudflareEmail = Env('CLOUDFLARE_EMAIL');
-        $cloudflareKey = Env('CLOUDFLARE_KEY');
+        $cloudflareZoneId = Env::get('CLOUDFLARE_ZONE_ID');
+        $cloudflareEmail = Env::get('CLOUDFLARE_EMAIL');
+        $cloudflareKey = Env::get('CLOUDFLARE_KEY');
         $fullUrl = "https://api.cloudflare.com/client/v4/zones/$cloudflareZoneId/dns_records/$id";
 
         $body = [
