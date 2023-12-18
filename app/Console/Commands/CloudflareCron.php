@@ -29,23 +29,51 @@ class CloudflareCron extends Command
     public function handle()
     {
         $this->info('Cloudflare IP Dynamic Cron | '. date('Y-m-d H:i:s'));
-        Log::info('Cloudflare IP Dynamic Cron | '. date('Y-m-d H:i:s'));
+        $cloudflareDomain = Env('CLOUDFLARE_DOMAIN');
+        $this->runningCheck($cloudflareDomain);
+    }
 
-        $response = Http::get('https://api.ipify.org/?format=json');
-        $publicIp = $response['ip'];
-        $this->info('IP Public: ' . $publicIp);
-
-        // update cloudflare dns record
+    private function runningCheck($name) {
         $cloudflareZoneId = Env('CLOUDFLARE_ZONE_ID');
-        $cloudflareIdentifier = Env('CLOUDFLARE_IDENTIFIER');
         $cloudflareEmail = Env('CLOUDFLARE_EMAIL');
         $cloudflareKey = Env('CLOUDFLARE_KEY');
-        $fullUrll = "https://api.cloudflare.com/client/v4/zones/$cloudflareZoneId/dns_records/$cloudflareIdentifier";
+        $fullUrl = "https://api.cloudflare.com/client/v4/zones/$cloudflareZoneId/dns_records";
+
+        $response = Http::withHeaders([
+            'X-Auth-Email' => $cloudflareEmail,
+            'X-Auth-Key' => $cloudflareKey,
+            'Content-Type' => 'application/json'
+        ])->get($fullUrl);
+
+        if ($response->successful()) {
+            $data = $response->json();
+            $result = collect($data['result'])->where('name', $name)->first();
+
+            // if not exist create new
+            if (!$result) {
+                $result = $this->createDNSRecord($name, $this->getPublicIP());
+            } else {
+                $this->updateDNSRecord($result['id'], $name, $this->getPublicIP());
+            }
+
+            return $result['id'];
+        } else {
+            $this->error('DNS Update Failed');
+            Log::error($response->body());
+        }
+    }
+
+    private function createDNSRecord($name, $content)
+    {
+        $cloudflareZoneId = Env('CLOUDFLARE_ZONE_ID');
+        $cloudflareEmail = Env('CLOUDFLARE_EMAIL');
+        $cloudflareKey = Env('CLOUDFLARE_KEY');
+        $fullUrl = "https://api.cloudflare.com/client/v4/zones/$cloudflareZoneId/dns_records";
 
         $body = [
             'type' => 'A',
-            'name' => 'api',
-            'content' => $publicIp,
+            'name' => $name,
+            'content' => $content,
             'ttl' => 1,
             'proxied' => true
         ];
@@ -54,7 +82,37 @@ class CloudflareCron extends Command
             'X-Auth-Email' => $cloudflareEmail,
             'X-Auth-Key' => $cloudflareKey,
             'Content-Type' => 'application/json'
-        ])->put($fullUrll, $body);
+        ])->post($fullUrl, $body);
+
+        if ($response->successful()) {
+            $this->info('DNS Created');
+            return $response->json()['result'];
+        } else {
+            $this->error('DNS Create Failed');
+            Log::error($response->body());
+        }
+    }
+
+    private function updateDNSRecord($id, $name, $content)
+    {
+        $cloudflareZoneId = Env('CLOUDFLARE_ZONE_ID');
+        $cloudflareEmail = Env('CLOUDFLARE_EMAIL');
+        $cloudflareKey = Env('CLOUDFLARE_KEY');
+        $fullUrl = "https://api.cloudflare.com/client/v4/zones/$cloudflareZoneId/dns_records/$id";
+
+        $body = [
+            'type' => 'A',
+            'name' => $name,
+            'content' => $content,
+            'ttl' => 1,
+            'proxied' => true
+        ];
+
+        $response = Http::withHeaders([
+            'X-Auth-Email' => $cloudflareEmail,
+            'X-Auth-Key' => $cloudflareKey,
+            'Content-Type' => 'application/json'
+        ])->put($fullUrl, $body);
 
         if ($response->successful()) {
             $this->info('DNS Updated');
@@ -62,5 +120,10 @@ class CloudflareCron extends Command
             $this->error('DNS Update Failed');
             Log::error($response->body());
         }
+    }
+
+    private function getPublicIP() {
+        $response = Http::get('https://api.ipify.org/?format=json');
+        return $response['ip'];
     }
 }
