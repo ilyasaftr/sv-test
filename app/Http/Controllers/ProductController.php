@@ -25,21 +25,42 @@ class ProductController extends Controller
      */
     public function index()
     {
+        $query = Product::withCount('reviews')->withAvg('reviews', 'rating');
 
-        // add product search by name or category or by popularity review
         if (request()->has('search')) {
             $searchName = request()->get('search');
-            $products = Product::withCount('reviews')->withAvg('reviews', 'rating')->where('name', 'like', '%' . $searchName . '%')->paginate(10);
-        } else if (request()->has('category')) {
+            $query->where('name', 'like', '%' . $searchName . '%');
+        }
+
+        if (request()->has('category')) {
             $categoryName = request()->get('category');
             $category = Category::where('slug', $categoryName)->firstOrFail();
-            $products = Product::withCount('reviews')->withAvg('reviews', 'rating')->where('category_id', $category->id)->paginate(10);
-        } else if (request()->has('popularity')) {
-            // order by reviews count and highest average rating
-            $products = Product::withCount('reviews')->withAvg('reviews', 'rating')->orderBy('reviews_count', 'desc')->orderBy('reviews_avg_rating', 'desc')->paginate(10);
-        } else {
-            $products = Product::withCount('reviews')->withAvg('reviews', 'rating')->paginate(10);
+            $query->where('category_id', $category->id);
         }
+
+        if (request()->has('popularity')) {
+            $query->orderBy('reviews_count', 'desc')->orderBy('reviews_avg_rating', 'desc');
+        }
+
+        if (request()->has('price')) {
+            $price = request()->get('price');
+            if ($price === 'highest') {
+                $query->orderBy('price', 'desc');
+            } else if ($price === 'lowest') {
+                $query->orderBy('price', 'asc');
+            }
+        }
+
+        if (request()->has('newest')) {
+            $query->orderBy('created_at', 'desc');
+        }
+
+        if (request()->has('oldest')) {
+            $query->orderBy('created_at', 'asc');
+        }
+
+        $products = $query->paginate(10);
+
         return ProductResource::collection($products);
     }
 
