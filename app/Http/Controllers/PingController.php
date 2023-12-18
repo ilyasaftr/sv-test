@@ -9,6 +9,11 @@ use Throwable;
 
 class PingController extends Controller
 {
+    public function __construct()
+    {
+        $this->middleware(['auth:sanctum', 'abilities:admin']);
+    }
+
     public function ping()
     {
         // get query ip address
