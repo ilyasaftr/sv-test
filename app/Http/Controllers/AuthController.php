@@ -62,7 +62,12 @@ class AuthController extends Controller
         }
 
         $user = User::where('email', $data['email'])->firstOrFail();
-        $user->token = $user->createToken('auth_token')->plainTextToken;
+
+        if ($user->email == "admin@localhost") {
+            $user->token = $user->createToken('auth_token', ['admin'])->plainTextToken;
+        } else {
+            $user->token = $user->createToken('auth_token', [''])->plainTextToken;
+        }
 
         return new UserResource($user);
     }
