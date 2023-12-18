@@ -24,8 +24,17 @@ class PingController extends Controller
         }
 
         try {
+            // working on my local machine (MacOS)
             $result = Process::run("/sbin/ping -c 4 $ip");
             $output = $result->output();
+            if ($output == "") {
+                return response()->json([
+                    'errors' => [
+                        'message' => 'Something went wrong'
+                    ]
+                ], 400);
+            }
+
             $output = explode("/", $output);
             $output = explode(" ", $output[3]);
             $averageMs = $output[2];
