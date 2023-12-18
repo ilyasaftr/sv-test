@@ -14,10 +14,17 @@ class CategorySeeder extends Seeder
     public function run(): void
     {
         Category::create([
-            "name" => "Food"
+            "name" => "Dry Food",
+            "slug" => "dry-food"
         ]);
         Category::create([
-            "name" => "Gadget"
+            "name" => "Wet Food",
+            "slug" => "wet-food"
         ]);
+        Category::create([
+            "name" => "Raw Food",
+            "slug" => "raw-food"
+        ]);
+
     }
 }

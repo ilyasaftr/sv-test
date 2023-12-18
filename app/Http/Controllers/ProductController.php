@@ -35,7 +35,8 @@ class ProductController extends Controller
             $category = Category::where('slug', $categoryName)->firstOrFail();
             $products = Product::withCount('reviews')->withAvg('reviews', 'rating')->where('category_id', $category->id)->paginate(10);
         } else if (request()->has('popularity')) {
-            $products = Product::withCount('reviews')->withAvg('reviews', 'rating')->orderBy('reviews_count', 'desc')->paginate(10);
+            // order by reviews count and highest average rating
+            $products = Product::withCount('reviews')->withAvg('reviews', 'rating')->orderBy('reviews_count', 'desc')->orderBy('reviews_avg_rating', 'desc')->paginate(10);
         } else {
             $products = Product::withCount('reviews')->withAvg('reviews', 'rating')->paginate(10);
         }
